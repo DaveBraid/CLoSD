@@ -4,6 +4,7 @@ defaults:
   - robot: smpl_humanoid
   - learning: im
   - sim: default_sim
+  - custom_prompts: custom_prompts
 
 project_name: "CLoSD"
 notes: "Default Notes"
@@ -27,6 +28,12 @@ metadata: false
 play: ${test}
 train: True
 
+env:
+  task: closd_t2m
+  test: ${test}
+  custom_prompts: ${custom_prompts.prompts}
+  dip:
+    debug_hml: False
 
 ####### Testing Configs. ########
 server_mode: False
@@ -45,4 +52,3 @@ hydra:
       OMP_NUM_THREADS: 1
   run:
     dir: output/HumanoidIm/${exp_name}
-

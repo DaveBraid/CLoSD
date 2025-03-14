@@ -30,6 +30,7 @@ import torch
 from closd.env.tasks import closd_task
 from isaacgym.torch_utils import *
 from closd.utils.closd_util import STATES
+import random
 
 class CLoSDT2M(closd_task.CLoSDTask):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
@@ -42,24 +43,54 @@ class CLoSDT2M(closd_task.CLoSDTask):
         self.init_state = STATES.TEXT2MOTION
         self.hml_data_buf_size = max(self.fake_mdm_args.context_len, self.planning_horizon_20fps)
         self.hml_prefix_from_data = torch.zeros([self.num_envs, 263, 1, self.hml_data_buf_size], dtype=torch.float32, device=self.device)
+        
+        # 添加自定义提示词支持
+        self.custom_prompts = None
+        print("Debug: Checking custom prompts configuration...")
+        print(f"Debug: cfg.env.test = {self.cfg.env.test}")
+        print(f"Debug: hasattr(cfg.env, 'custom_prompts') = {hasattr(cfg.env, 'custom_prompts')}")
+        if hasattr(cfg.env, 'custom_prompts'):
+            print(f"Debug: cfg.env.custom_prompts = {cfg.env.custom_prompts}")
+        
+        if hasattr(cfg.env, 'custom_prompts') and cfg.env.custom_prompts is not None:
+            self.custom_prompts = cfg.env.custom_prompts
+            print(f"Debug: Loaded custom prompts: {self.custom_prompts}")
         return
     
     def update_mdm_conditions(self, env_ids):  
         super().update_mdm_conditions(env_ids)
         
-        # updates prompts and lengths
+        # 获取gt_motion，无论是自定义提示词还是数据集模式都需要
         try:
             gt_motion, model_kwargs = next(self.mdm_data_iter)
         except StopIteration:
             del self.mdm_data_iter
-            self.mdm_data_iter = iter(self.mdm_data) # re-initialize
+            self.mdm_data_iter = iter(self.mdm_data)
             gt_motion, model_kwargs = next(self.mdm_data_iter)
-        for i in env_ids:
-            self.hml_prompts[int(i)] = model_kwargs['y']['text'][int(i)]
-            self.hml_lengths[int(i)] = model_kwargs['y']['lengths'][int(i)]  
-            self.hml_tokens[int(i)] = model_kwargs['y']['tokens'][int(i)]  
-            self.db_keys[int(i)] = model_kwargs['y']['db_key'][int(i)]  
-        self.hml_prefix_from_data[env_ids] = gt_motion[..., :self.hml_data_buf_size].to(self.device)[env_ids]  # will be used by the first MDM iteration
+        
+        # 如果启用了自定义提示词模式
+        if self.custom_prompts is not None and self.cfg.env.test:
+            print("Debug: Using custom prompts mode")
+            for i in env_ids:
+                # 从自定义提示词列表中随机选择一个
+                prompt = random.choice(self.custom_prompts)
+                self.hml_prompts[int(i)] = prompt
+                # 使用默认长度，因为这是测试模式
+                self.hml_lengths[int(i)] = 40
+                # 使用默认token，因为这是测试模式
+                self.hml_tokens[int(i)] = torch.zeros(1, dtype=torch.long, device=self.device)
+                self.db_keys[int(i)] = "custom"
+                print(f'Environment {i}: Custom Prompt = {prompt}')
+        else:
+            print("Debug: Using dataset prompts mode")
+            for i in env_ids:
+                self.hml_prompts[int(i)] = model_kwargs['y']['text'][int(i)]
+                self.hml_lengths[int(i)] = model_kwargs['y']['lengths'][int(i)]  
+                self.hml_tokens[int(i)] = model_kwargs['y']['tokens'][int(i)]  
+                self.db_keys[int(i)] = model_kwargs['y']['db_key'][int(i)]  
+                print(f'Environment {i}: Dataset Prompt = {self.hml_prompts[int(i)]}')
+        
+        self.hml_prefix_from_data[env_ids] = gt_motion[..., :self.hml_data_buf_size].to(self.device)[env_ids]
         if self.cfg['env']['dip']['debug_hml']:
             print(f'in update_mdm_conditions: 1st 10 env_ids={env_ids[:10].cpu().numpy()}, prompts={self.hml_prompts[:2]}')
         return

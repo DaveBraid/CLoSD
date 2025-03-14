@@ -142,7 +142,7 @@ def create_rlgpu_env(**kwargs):
 
     frames = kwargs.pop('frames', 1)
     if frames > 1:
-        env = wrappers.FrameStack(env, frames, False)
+        env = wrappers.FrameStack(env, frames, False) # type: ignore
     return env
 
 

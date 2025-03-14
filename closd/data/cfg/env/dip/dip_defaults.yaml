@@ -2,7 +2,10 @@
   debug_hml: False
   planning_horizon: 16  # 20fps frames
   planning_horizon_multiplyer: 1  # 1 means feature disabled
-  prompt: ''  # no prompt meaning sampling from the dataset
+  prompt:   # no prompt meaning sampling from the dataset
+  # - 'a person uses his right arm to help himself to stand up.'
+  # - 'a person jumps on one leg.'
+  # - 'a person walking like a zombie.'
   model_path:  './closd/diffusion_planner/save/FewSteps_DiffusionSteps_50/model000200000.pt'  # './closd/diffusion_planner/save/Ema2_DiffusionSteps_10/model000200000.pt'
   limit_context: null # 30fps frames, if None - will not limit
   cfg_param: 1.
