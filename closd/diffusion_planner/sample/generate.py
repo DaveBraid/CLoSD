@@ -112,17 +112,30 @@ def main(args=None):
         if 'prefix' in model_kwargs['y'].keys():
             input_motion_w_prefix = torch.concat([model_kwargs['y']['prefix'].to(dist_util.dev()), input_motion], dim=3); 
     else:
-        collate_args = [{'inp': torch.zeros(n_frames), 'tokens': None, 'lengths': n_frames}] * args.num_samples
+        # 从数据集中加载一个完整的数据点
+        iterator = iter(data)
+        _, model_kwargs_data = next(iterator)
+        
+        # 创建新的 model_kwargs
+        model_kwargs = {'y': {}}
+        
+        # 保留原始的 prefix
+        if 'prefix' in model_kwargs_data['y']:
+            model_kwargs['y']['prefix'] = model_kwargs_data['y']['prefix'].to(dist_util.dev())
+        
+        # 设置其他必要的键值
+        model_kwargs['y']['mask'] = model_kwargs_data['y']['mask'].to(dist_util.dev())
+        model_kwargs['y']['lengths'] = model_kwargs_data['y']['lengths'].to(dist_util.dev())
+        
+        # 使用自定义文本
         is_t2m = any([args.input_text, args.text_prompt])
         if is_t2m:
-            # t2m
-            collate_args = [dict(arg, text=txt) for arg, txt in zip(collate_args, texts)]
+            model_kwargs['y']['text'] = texts
         else:
             # a2m
             action = data.dataset.action_name_to_action(action_text)
-            collate_args = [dict(arg, action=one_action, action_text=one_action_text) for
-                            arg, one_action, one_action_text in zip(collate_args, action, action_text)]
-        _, model_kwargs = collate(collate_args)
+            model_kwargs['y']['action'] = torch.as_tensor(action).unsqueeze(1).to(dist_util.dev())
+            model_kwargs['y']['action_text'] = action_text
 
     model_kwargs['y'] = {key: val.to(dist_util.dev()) if torch.is_tensor(val) else val for key, val in model_kwargs['y'].items()}
     init_image = None
