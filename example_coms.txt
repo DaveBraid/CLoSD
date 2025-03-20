@@ -1,0 +1,31 @@
+Multi-task
+python closd/run.py\
+  learning=im_big robot=smpl_humanoid\
+  epoch=-1 test=True no_virtual_display=True\
+  headless=False env.num_envs=9\
+  env=closd_multitask exp_name=CLoSD_multitask_finetune
+
+Sequence of tasks
+python closd/run.py\
+  learning=im_big robot=smpl_humanoid\
+  epoch=-1 test=True no_virtual_display=True\
+  headless=False env.num_envs=9\
+  env=closd_sequence exp_name=CLoSD_multitask_finetune
+
+
+
+
+Text-to-motion
+python closd/run.py\
+  learning=im_big robot=smpl_humanoid\
+  epoch=-1 test=True no_virtual_display=True\
+  headless=False env.num_envs=9\
+  env=closd_t2m exp_name=CLoSD_t2m_finetune\
+  text_prompt='a person walking like a zombie.'
+  
+Pure T2M Origin
+ python closd/run.py\
+  learning=im_big robot=smpl_humanoid\
+  epoch=-1 test=True no_virtual_display=True\
+  headless=False env.num_envs=9\
+  env=closd_t2m exp_name=CLoSD_t2m_finetune
